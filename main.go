@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -45,7 +47,7 @@ var (
 			Env:       "CHRONY_OFFSET_WARNING",
 			Argument:  "offset-warning",
 			Shorthand: "w",
-			Default:   50.0,
+			Default:   0.050,
 			Usage:     "Offset warning level [s]",
 			Value:     &plugin.OffsetWarning,
 		},
@@ -54,7 +56,7 @@ var (
 			Env:       "CHRONY_OFFSET_CRITICAL",
 			Argument:  "offset-critical",
 			Shorthand: "c",
-			Default:   100.0,
+			Default:   0.100,
 			Usage:     "Offset critical level [s]",
 			Value:     &plugin.OffsetCritical,
 		},
@@ -91,6 +93,9 @@ func executeCheck(event *types.Event) (int, error) {
 
 	_ = stats
 
+	b, _ := json.MarshalIndent(stats, "", "  ")
+	fmt.Println(string(b))
+
 	return sensu.CheckStateOK, nil
 }
 
@@ -100,12 +105,26 @@ type stats struct {
 }
 
 func getStats(socketPath string) (*stats, error) {
-	addr := &net.UnixAddr{Name: socketPath}
-	sock, err := net.DialUnix("unix", nil, addr)
+	addr, err := net.ResolveUnixAddr("unixgram", socketPath)
+	if err != nil {
+		return nil, fmt.Errorf("socket address error: %w", err)
+	}
+
+	base, _ := path.Split(socketPath)
+	local := path.Join(base, fmt.Sprintf("chronyc.%d.sock", os.Getpid()))
+	localAddr, _ := net.ResolveUnixAddr("unixgram", local)
+
+	sock, err := net.DialUnix("unixgram", localAddr, addr)
 	if err != nil {
 		return nil, fmt.Errorf("socket open error: %w", err)
 	}
 	defer sock.Close()
+	defer os.RemoveAll(local)
+
+	err = os.Chmod(local, 0666)
+	if err != nil {
+		return nil, fmt.Errorf("socket chmod 0666 error: %w", err)
+	}
 
 	// Suggest that IO shouldn't ever reach so long timeout
 	sock.SetDeadline(time.Now().Add(time.Second))
