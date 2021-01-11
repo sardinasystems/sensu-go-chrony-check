@@ -20,3 +20,4 @@ vendor/
 bonsai/
 dist/
 sensu-go-chrony-check
+ntpcheck
