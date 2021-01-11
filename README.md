@@ -1,5 +1,3 @@
-{{- /* Ignore this text, until templating is ran via [sensu-plugin-tool](https://github.com/sensu-community/sensu-plugin-tool) the below badge links wiill not render */ -}}
-
 [![Sensu Bonsai Asset](https://img.shields.io/badge/Bonsai-Download%20Me-brightgreen.svg?colorB=89C967&logo=sensu)](https://bonsai.sensu.io/assets/sardinasystems/sensu-go-chrony-check)
 ![Go Test](https://github.com/sardinasystems/sensu-go-chrony-check/workflows/Go%20Test/badge.svg)
 ![goreleaser](https://github.com/sardinasystems/sensu-go-chrony-check/workflows/goreleaser/badge.svg)
@@ -21,7 +19,7 @@
 
 The sensu-go-chrony-check is a [Sensu Check][6] that ensures that local cronyd is having time source.
 
-Unlike [sensu-plugins-chrony][11] uses unix socket directly. Solves #sensu-plugins/sensu-plugins-chrony/17 .
+Unlike [sensu-plugins-chrony][11] uses unix socket directly. Solves https://github.com/sensu-plugins/sensu-plugins-chrony/issues/17 .
 
 
 ## Files

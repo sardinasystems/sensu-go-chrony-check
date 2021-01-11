@@ -2,8 +2,12 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"net"
+	"os"
+	"path/filepath"
+	"time"
 
+	"github.com/facebookincubator/ntp/protocol/chrony"
 	"github.com/sensu-community/sensu-plugin-sdk/sensu"
 	"github.com/sensu/sensu-go/types"
 )
@@ -11,27 +15,48 @@ import (
 // Config represents the check plugin config.
 type Config struct {
 	sensu.PluginConfig
-	Example string
+	SocketPath string
+	// Jitter? Stratum?
+	OffsetWarning  float64
+	OffsetCritical float64
 }
 
 var (
 	plugin = Config{
 		PluginConfig: sensu.PluginConfig{
-			Name:     "{{ .GithubProject }}",
-			Short:    "{{ .Description }}",
-			Keyspace: "sensu.io/plugins/{{ .GithubProject }}/config",
+			Name:     "sensu-go-chrony-check",
+			Short:    "sensu-go check of chrony status",
+			Keyspace: "sensu.io/plugins/sensu-go-chrony-check/config",
 		},
 	}
 
 	options = []*sensu.PluginConfigOption{
-		&sensu.PluginConfigOption{
-			Path:      "example",
-			Env:       "CHECK_EXAMPLE",
-			Argument:  "example",
-			Shorthand: "e",
-			Default:   "",
-			Usage:     "An example string configuration option",
-			Value:     &plugin.Example,
+		{
+			Path:      "socket",
+			Env:       "HAPROXY_SOCKET",
+			Argument:  "socket",
+			Shorthand: "S",
+			Default:   chrony.ChronySocketPath,
+			Usage:     "Path to haproxy control socket",
+			Value:     &plugin.SocketPath,
+		},
+		{
+			Path:      "offset_warning",
+			Env:       "CHRONY_OFFSET_WARNING",
+			Argument:  "offset-warning",
+			Shorthand: "w",
+			Default:   50.0,
+			Usage:     "Offset warning level [s]",
+			Value:     &plugin.OffsetWarning,
+		},
+		{
+			Path:      "offset_critical",
+			Env:       "CHRONY_OFFSET_CRITICAL",
+			Argument:  "offset-critical",
+			Shorthand: "c",
+			Default:   100.0,
+			Usage:     "Offset critical level [s]",
+			Value:     &plugin.OffsetCritical,
 		},
 	}
 )
@@ -42,13 +67,92 @@ func main() {
 }
 
 func checkArgs(event *types.Event) (int, error) {
-	if len(plugin.Example) == 0 {
-		return sensu.CheckStateWarning, fmt.Errorf("--example or CHECK_EXAMPLE environment variable is required")
+	path, err := filepath.Abs(plugin.SocketPath)
+	if err != nil {
+		return sensu.CheckStateUnknown, fmt.Errorf("--socket error: %w", err)
 	}
+
+	fi, err := os.Lstat(path)
+	if err != nil {
+		return sensu.CheckStateUnknown, fmt.Errorf("--socket error: %w", err)
+	} else if fi.Mode()&os.ModeSocket == 0 {
+		return sensu.CheckStateUnknown, fmt.Errorf("--socket: %s is not socket: %v", path, fi.Mode())
+	}
+	plugin.SocketPath = path
+
 	return sensu.CheckStateOK, nil
 }
 
 func executeCheck(event *types.Event) (int, error) {
-	log.Println("executing check with --example", plugin.Example)
+	stats, err := getStats(plugin.SocketPath)
+	if err != nil {
+		return sensu.CheckStateUnknown, err
+	}
+
+	_ = stats
+
 	return sensu.CheckStateOK, nil
+}
+
+type stats struct {
+	Tracking chrony.Tracking
+	Sources  []chrony.SourceData
+}
+
+func getStats(socketPath string) (*stats, error) {
+	addr := &net.UnixAddr{Name: socketPath}
+	sock, err := net.DialUnix("unix", nil, addr)
+	if err != nil {
+		return nil, fmt.Errorf("socket open error: %w", err)
+	}
+	defer sock.Close()
+
+	// Suggest that IO shouldn't ever reach so long timeout
+	sock.SetDeadline(time.Now().Add(time.Second))
+
+	client := chrony.Client{
+		Sequence:   1,
+		Connection: sock,
+	}
+
+	stats := &stats{
+		Sources: make([]chrony.SourceData, 0),
+	}
+
+	trReq := chrony.NewTrackingPacket()
+	resp, err := client.Communicate(trReq)
+	if err != nil {
+		return nil, fmt.Errorf("tracking request error: %w", err)
+	}
+	tracking, ok := resp.(*chrony.ReplyTracking)
+	if !ok {
+		return nil, fmt.Errorf("unexpected reply: %v", resp)
+	}
+	stats.Tracking = tracking.Tracking
+
+	sourcesReq := chrony.NewSourcesPacket()
+	resp, err = client.Communicate(sourcesReq)
+	if err != nil {
+		return nil, fmt.Errorf("sources request error: %w", err)
+	}
+	sources, ok := resp.(*chrony.ReplySources)
+	if !ok {
+		return nil, fmt.Errorf("unexpected reply: %v", resp)
+	}
+
+	for i := 0; i < sources.NSources; i++ {
+		srcReq := chrony.NewSourceDataPacket(int32(i))
+		resp, err = client.Communicate(srcReq)
+		if err != nil {
+			return nil, fmt.Errorf("source data #%d request error: %w", i, err)
+		}
+		source, ok := resp.(*chrony.ReplySourceData)
+		if !ok {
+			return nil, fmt.Errorf("unexpected reply: %v", resp)
+		}
+
+		stats.Sources = append(stats.Sources, source.SourceData)
+	}
+
+	return stats, nil
 }
