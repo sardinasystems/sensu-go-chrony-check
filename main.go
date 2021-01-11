@@ -256,7 +256,10 @@ func getStats(socketPath string) (*stats, error) {
 	}
 
 	// Suggest that IO shouldn't ever reach so long timeout
-	sock.SetDeadline(time.Now().Add(time.Second))
+	err = sock.SetDeadline(time.Now().Add(time.Second))
+	if err != nil {
+		return nil, fmt.Errorf("socket deadline error: %w", err)
+	}
 
 	client := chrony.Client{
 		Sequence:   1,
