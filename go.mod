@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/facebookincubator/ntp v0.0.0-20211124231859-25b006a98efc
 	github.com/sensu/sensu-go/types v0.10.0
-	github.com/sensu/sensu-plugin-sdk v0.15.0
+	github.com/sensu/sensu-plugin-sdk v0.16.0
 )
 
 require (
@@ -16,6 +16,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/google/go-cmp v0.5.7 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
