@@ -40,8 +40,8 @@ var (
 		},
 	}
 
-	options = []*sensu.PluginConfigOption{
-		{
+	options = []sensu.ConfigOption{
+		&sensu.PluginConfigOption[string]{
 			Path:      "socket",
 			Env:       "HAPROXY_SOCKET",
 			Argument:  "socket",
@@ -50,7 +50,7 @@ var (
 			Usage:     "Path to haproxy control socket",
 			Value:     &plugin.SocketPath,
 		},
-		{
+		&sensu.PluginConfigOption[uint]{
 			Path:     "stratum_warning",
 			Env:      "CHRONY_STRATUM_WARNING",
 			Argument: "stratum-warning",
@@ -59,7 +59,7 @@ var (
 			Usage:   "Stratum warning level",
 			Value:   &plugin.StratumWarning,
 		},
-		{
+		&sensu.PluginConfigOption[uint]{
 			Path:     "stratum_critical",
 			Env:      "CHRONY_STRATUM_CRITICAL",
 			Argument: "stratum-critical",
@@ -86,7 +86,7 @@ var (
 		// 	Usage:     "Offset critical level [s]",
 		// 	Value:     &plugin.OffsetCritical,
 		// },
-		{
+		&sensu.PluginConfigOption[uint]{
 			Path:      "lastrx_warning",
 			Env:       "CHRONY_LASTRX_WARNING",
 			Argument:  "lastrx-warning",
@@ -95,7 +95,7 @@ var (
 			Usage:     "LastRx warning level [s]",
 			Value:     &plugin.LastRxWarning,
 		},
-		{
+		&sensu.PluginConfigOption[uint]{
 			Path:      "lastrx_critical",
 			Env:       "CHRONY_LASTRX_CRITICAL",
 			Argument:  "lastrx-critical",
@@ -104,7 +104,7 @@ var (
 			Usage:     "LastRx critical level [s]",
 			Value:     &plugin.LastRxCritical,
 		},
-		{
+		&sensu.PluginConfigOption[float64]{
 			Path:      "reachability_warning",
 			Env:       "CHRONY_REACHABILITY_WARNING",
 			Argument:  "reachablility-warning",
@@ -113,7 +113,7 @@ var (
 			Usage:     "Reachablility warning percent",
 			Value:     &plugin.ReachabilityWarning,
 		},
-		{
+		&sensu.PluginConfigOption[float64]{
 			Path:      "reachability_critical",
 			Env:       "CHRONY_REACHABILITY_CRITICAL",
 			Argument:  "reachablility-critical",
@@ -122,7 +122,7 @@ var (
 			Usage:     "Reachablility critical percent",
 			Value:     &plugin.ReachabilityCritical,
 		},
-		{
+		&sensu.PluginConfigOption[bool]{
 			Path:      "debug",
 			Env:       "CHRONY_DEBUG",
 			Argument:  "debug",
