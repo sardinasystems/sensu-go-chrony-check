@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/facebookincubator/ntp/protocol/chrony"
-	"github.com/sensu/sensu-go/types"
+	corev2 "github.com/sensu/sensu-go/api/core/v2"
 	"github.com/sensu/sensu-plugin-sdk/sensu"
 )
 
@@ -135,11 +135,22 @@ var (
 )
 
 func main() {
-	check := sensu.NewGoCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, false)
+	useStdin := false
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		fmt.Printf("Error check stdin: %v\n", err)
+		panic(err)
+	}
+	//Check the Mode bitmask for Named Pipe to indicate stdin is connected
+	if fi.Mode()&os.ModeNamedPipe != 0 {
+		useStdin = true
+	}
+
+	check := sensu.NewGoCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, useStdin)
 	check.Execute()
 }
 
-func checkArgs(event *types.Event) (int, error) {
+func checkArgs(event *corev2.Event) (int, error) {
 	path, err := filepath.Abs(plugin.SocketPath)
 	if err != nil {
 		return sensu.CheckStateUnknown, fmt.Errorf("--socket error: %w", err)
@@ -156,7 +167,7 @@ func checkArgs(event *types.Event) (int, error) {
 	return sensu.CheckStateOK, nil
 }
 
-func executeCheck(event *types.Event) (int, error) {
+func executeCheck(event *corev2.Event) (int, error) {
 	stats, err := getStats(plugin.SocketPath)
 	if err != nil {
 		return sensu.CheckStateUnknown, err
