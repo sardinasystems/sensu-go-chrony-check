@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/facebookincubator/ntp v0.0.0-20211124231859-25b006a98efc
 	github.com/sensu/sensu-go/api/core/v2 v2.16.0
-	github.com/sensu/sensu-plugin-sdk v0.16.0
+	github.com/sensu/sensu-plugin-sdk v0.18.0
 )
 
 require (
@@ -26,8 +26,9 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/robertkrimen/otto v0.2.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
-	github.com/sensu/sensu-go/types v0.11.0 // indirect
-	github.com/sensu/sensu-licensing v0.1.2 // indirect
+	github.com/sensu/core/v2 v2.16.1 // indirect
+	github.com/sensu/sensu-api-tools v0.1.0 // indirect
+	github.com/sensu/sensu-licensing/v2 v2.2.1 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/afero v1.9.3 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
