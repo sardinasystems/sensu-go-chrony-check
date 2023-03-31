@@ -296,8 +296,8 @@ github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQD
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
-github.com/sensu/core/v2 v2.17.0 h1:f8apafxkAqvnFTOMnlTFdFbDrmuW9/MC5lgvgC8UmWs=
-github.com/sensu/core/v2 v2.17.0/go.mod h1:2etWGsa+nx5G2Q3CKiSJY9kSg8VhCgGzgp1VyxbC6U8=
+github.com/sensu/core/v2 v2.18.0 h1:fRxPgC5lal5kA72wTDjFONKBGAQNlILwmjCg9PK5Nj8=
+github.com/sensu/core/v2 v2.18.0/go.mod h1:2etWGsa+nx5G2Q3CKiSJY9kSg8VhCgGzgp1VyxbC6U8=
 github.com/sensu/sensu-api-tools v0.1.0 h1:ctEyFIY1aKis1KqL7wOo+Apg/5t9X6vBVLzrqUUuBkQ=
 github.com/sensu/sensu-api-tools v0.1.0/go.mod h1:SNISS4OhwNSZI9/YKTQr1bghOEwed9ZT4v+ztKk1Mq0=
 github.com/sensu/sensu-go/types v0.12.0 h1:t8gupS1QhkuA/b9LzTaF0h6DBGHX2UzKHyuBPhj/PoA=
