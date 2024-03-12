@@ -1,6 +1,6 @@
 module github.com/sardinasystems/sensu-go-chrony-check
 
-go 1.18
+go 1.22
 
 require (
 	github.com/facebookincubator/ntp v0.0.0-20211124231859-25b006a98efc
