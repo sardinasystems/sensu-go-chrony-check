@@ -206,6 +206,8 @@ func executeCheck(event *corev2.Event) (int, error) {
 	for _, source := range stats.Sources {
 		if source.Reachability == 255 {
 			reachability += 100.0
+		} else {
+			fmt.Printf("source %v reachability: %08b\n", source.IPAddr, source.Reachability)
 		}
 
 		// skip unreachable sources
