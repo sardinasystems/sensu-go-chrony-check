@@ -203,29 +203,50 @@ func executeCheck(event *corev2.Event) (int, error) {
 	}
 
 	reachability := 0.0
+	reachableSources := 0
 	for _, source := range stats.Sources {
-		if source.Reachability == 255 {
-			reachability += 100.0
-		} else {
-			fmt.Printf("source %v reachability: %08b\n", source.IPAddr, source.Reachability)
-		}
-
 		// skip unreachable sources
 		if source.State == chrony.SourceStateUnreach {
 			continue
 		}
 
+		// Reachability is a bitmask, 8 bits
+		// See also: https://chrony-project.org/doc/3.2/chronyc.html
+		srcReach := 0.0
+		for mask := uint16(1); mask < 0x100; mask <<= 1 {
+			if (source.Reachability & mask) != 0 {
+				srcReach += 100.0 / 8
+			}
+		}
+
+		reachability += srcReach
+		reachableSources++
+
+		if srcReach < 100.0 {
+			log.Printf("WARNING: %v server reachability: %.1f%% (0b%08b)", source.IPAddr, srcReach, source.Reachability)
+		}
+
 		lastRx := uint(source.SinceSample)
-		if lastRx >= plugin.LastRxCritical {
-			log.Printf("CRITICAL: %v server LastRx: %d", source.IPAddr, lastRx)
+		traking := source.IPAddr.Equal(stats.Tracking.IPAddr)
+		if lastRx >= plugin.LastRxCritical && traking {
+			log.Printf("CRITICAL: tracking %v server LastRx: %d", source.IPAddr, lastRx)
 			setResult(sensu.CheckStateCritical)
-		} else if lastRx >= plugin.LastRxWarning {
+		} else if lastRx >= plugin.LastRxWarning && traking {
+			log.Printf("WARNING: tracking %v server LastRx: %d", source.IPAddr, lastRx)
+			setResult(sensu.CheckStateWarning)
+		} else if lastRx >= plugin.LastRxCritical || lastRx >= plugin.LastRxWarning {
 			log.Printf("WARNING: %v server LastRx: %d", source.IPAddr, lastRx)
 			setResult(sensu.CheckStateWarning)
 		}
 	}
 
-	reachability /= float64(len(stats.Sources))
+	if reachableSources == 0 {
+		log.Printf("CRITICAL: no sources reachable!")
+		setResult(sensu.CheckStateCritical)
+		return result, nil
+	}
+
+	reachability /= float64(reachableSources)
 	if reachability <= plugin.ReachabilityCritical {
 		log.Printf("CRITICAL: only %.1f%% sources reachable!", reachability)
 		setResult(sensu.CheckStateCritical)
