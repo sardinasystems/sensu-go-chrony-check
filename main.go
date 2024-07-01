@@ -28,6 +28,8 @@ type Config struct {
 	LastRxCritical       uint
 	ReachabilityWarning  float64
 	ReachabilityCritical float64
+	MinSourcesWarning    uint
+	MinSourcesCritical   uint
 	Debug                bool
 }
 
@@ -122,6 +124,22 @@ var (
 			Usage:     "Reachablility critical percent",
 			Value:     &plugin.ReachabilityCritical,
 		},
+		&sensu.PluginConfigOption[uint]{
+			Path:     "min_sources_warning",
+			Env:      "CHRONY_MIN_SOURCES_WARNING",
+			Argument: "min-sources-warning",
+			Default:  3,
+			Usage:    "Minimal good sources",
+			Value:    &plugin.MinSourcesWarning,
+		},
+		&sensu.PluginConfigOption[uint]{
+			Path:     "min_sources_critical",
+			Env:      "CHRONY_MIN_SOURCES_CRITICAL",
+			Argument: "min-sources-critical",
+			Default:  1,
+			Usage:    "Minimal good sources",
+			Value:    &plugin.MinSourcesCritical,
+		},
 		&sensu.PluginConfigOption[bool]{
 			Path:      "debug",
 			Env:       "CHRONY_DEBUG",
@@ -205,11 +223,6 @@ func executeCheck(event *corev2.Event) (int, error) {
 	reachability := 0.0
 	reachableSources := 0
 	for _, source := range stats.Sources {
-		// skip unreachable sources
-		if source.State == chrony.SourceStateUnreach {
-			continue
-		}
-
 		// Reachability is a bitmask, 8 bits
 		// See also: https://chrony-project.org/doc/3.2/chronyc.html
 		srcReach := 0.0
@@ -219,11 +232,17 @@ func executeCheck(event *corev2.Event) (int, error) {
 			}
 		}
 
+		// count only good sources: sync|candidate
+		if !(source.State == chrony.SourceStateSync || source.State == chrony.SourceStateCandidate) {
+			log.Printf("SKIP: %v server is %v, reachability: %.1f%% (0b%08b)", source.IPAddr, source.State, srcReq, source.Reachability)
+			continue
+		}
+
 		reachability += srcReach
 		reachableSources++
 
 		if srcReach < 100.0 {
-			log.Printf("WARNING: %v server reachability: %.1f%% (0b%08b)", source.IPAddr, srcReach, source.Reachability)
+			log.Printf("WARNING: %v (%v) server reachability: %.1f%% (0b%08b)", source.IPAddr, source.State, srcReach, source.Reachability)
 		}
 
 		lastRx := uint(source.SinceSample)
@@ -235,7 +254,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 			log.Printf("WARNING: tracking %v server LastRx: %d", source.IPAddr, lastRx)
 			setResult(sensu.CheckStateWarning)
 		} else if lastRx >= plugin.LastRxCritical || lastRx >= plugin.LastRxWarning {
-			log.Printf("WARNING: %v server LastRx: %d", source.IPAddr, lastRx)
+			log.Printf("WARNING: %v (%v) server LastRx: %d", source.IPAddr, source.State, lastRx)
 			setResult(sensu.CheckStateWarning)
 		}
 	}
@@ -244,6 +263,12 @@ func executeCheck(event *corev2.Event) (int, error) {
 		log.Printf("CRITICAL: no sources reachable!")
 		setResult(sensu.CheckStateCritical)
 		return result, nil
+	} else if reachableSources <= plugin.MinSourcesCritical {
+		log.Printf("CRITICAL: good sources %d <= %d", reachableSources, plugin.MinSourcesCritical)
+		setResult(sensu.CheckStateCritical)
+	} else if reachableSources <= plugin.MinSourcesWarning {
+		log.Printf("WARNING: good sources %d <= %d", reachableSources, plugin.MinSourcesWarning)
+		setResult(sensu.CheckStateWarning)
 	}
 
 	reachability /= float64(reachableSources)
