@@ -234,7 +234,7 @@ func executeCheck(event *corev2.Event) (int, error) {
 
 		// count only good sources: sync|candidate
 		if !(source.State == chrony.SourceStateSync || source.State == chrony.SourceStateCandidate) {
-			log.Printf("SKIP: %v server is %v, reachability: %.1f%% (0b%08b)", source.IPAddr, source.State, srcReq, source.Reachability)
+			log.Printf("SKIP: %v server is %v, reachability: %.1f%% (0b%08b)", source.IPAddr, source.State, srcReach, source.Reachability)
 			continue
 		}
 
@@ -263,10 +263,10 @@ func executeCheck(event *corev2.Event) (int, error) {
 		log.Printf("CRITICAL: no sources reachable!")
 		setResult(sensu.CheckStateCritical)
 		return result, nil
-	} else if reachableSources <= plugin.MinSourcesCritical {
+	} else if reachableSources <= int(plugin.MinSourcesCritical) {
 		log.Printf("CRITICAL: good sources %d <= %d", reachableSources, plugin.MinSourcesCritical)
 		setResult(sensu.CheckStateCritical)
-	} else if reachableSources <= plugin.MinSourcesWarning {
+	} else if reachableSources <= int(plugin.MinSourcesWarning) {
 		log.Printf("WARNING: good sources %d <= %d", reachableSources, plugin.MinSourcesWarning)
 		setResult(sensu.CheckStateWarning)
 	}
