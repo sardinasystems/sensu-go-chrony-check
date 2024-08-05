@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/facebookincubator/ntp/protocol/chrony"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/sardinasystems/sensu-go-check-common/nagios"
 	corev2 "github.com/sensu/core/v2"
 	"github.com/sensu/sensu-plugin-sdk/sensu"
 )
@@ -18,18 +20,13 @@ import (
 // Config represents the check plugin config.
 type Config struct {
 	sensu.PluginConfig
-	SocketPath string
-	// Jitter?
-	StratumWarning  uint
-	StratumCritical uint
-	//OffsetWarning  float64
-	//OffsetCritical float64
-	LastRxWarning        uint
-	LastRxCritical       uint
-	ReachabilityWarning  float64
-	ReachabilityCritical float64
-	MinSourcesWarning    uint
-	MinSourcesCritical   uint
+	SocketPath           string
+	StratumWarning       nagios.Threshold
+	StratumCritical      nagios.Threshold
+	ReachabilityWarning  nagios.Threshold
+	ReachabilityCritical nagios.Threshold
+	SourcesWarning       nagios.Threshold
+	SourcesCritical      nagios.Threshold
 	Debug                bool
 }
 
@@ -52,93 +49,67 @@ var (
 			Usage:     "Path to haproxy control socket",
 			Value:     &plugin.SocketPath,
 		},
-		&sensu.PluginConfigOption[uint]{
-			Path:     "stratum_warning",
-			Env:      "CHRONY_STRATUM_WARNING",
-			Argument: "stratum-warning",
-			//Shorthand: "sw",
-			Default: uint(10),
-			Usage:   "Stratum warning level",
-			Value:   &plugin.StratumWarning,
+		&nagios.ThresholdConfigOption{
+			Option: sensu.PluginConfigOption[string]{
+				Path:     "stratum_warning",
+				Env:      "CHRONY_STRATUM_WARNING",
+				Argument: "stratum-warning",
+				Default:  "10:",
+				Usage:    "Stratum warning level [threshold]",
+			},
+			Value: &plugin.StratumWarning,
 		},
-		&sensu.PluginConfigOption[uint]{
-			Path:     "stratum_critical",
-			Env:      "CHRONY_STRATUM_CRITICAL",
-			Argument: "stratum-critical",
-			//Shorthand: "sc",
-			Default: uint(12),
-			Usage:   "Stratum critical level",
-			Value:   &plugin.StratumCritical,
+		&nagios.ThresholdConfigOption{
+			Option: sensu.PluginConfigOption[string]{
+				Path:     "stratum_critical",
+				Env:      "CHRONY_STRATUM_CRITICAL",
+				Argument: "stratum-critical",
+				Default:  "12:",
+				Usage:    "Stratum critical level [threshold]",
+			},
+			Value: &plugin.StratumCritical,
 		},
-		// {
-		// 	Path:      "offset_warning",
-		// 	Env:       "CHRONY_OFFSET_WARNING",
-		// 	Argument:  "offset-warning",
-		// 	Shorthand: "ow",
-		// 	Default:   0.050,
-		// 	Usage:     "Offset warning level [s]",
-		// 	Value:     &plugin.OffsetWarning,
-		// },
-		// {
-		// 	Path:      "offset_critical",
-		// 	Env:       "CHRONY_OFFSET_CRITICAL",
-		// 	Argument:  "offset-critical",
-		// 	Shorthand: "oc",
-		// 	Default:   0.100,
-		// 	Usage:     "Offset critical level [s]",
-		// 	Value:     &plugin.OffsetCritical,
-		// },
-		&sensu.PluginConfigOption[uint]{
-			Path:      "lastrx_warning",
-			Env:       "CHRONY_LASTRX_WARNING",
-			Argument:  "lastrx-warning",
-			Shorthand: "W",
-			Default:   uint(64),
-			Usage:     "LastRx warning level [s]",
-			Value:     &plugin.LastRxWarning,
+		&nagios.ThresholdConfigOption{
+			Option: sensu.PluginConfigOption[string]{
+				Path:      "reachability_warning",
+				Env:       "CHRONY_REACHABILITY_WARNING",
+				Argument:  "reachablility-warning",
+				Shorthand: "w",
+				Default:   ":67.0",
+				Usage:     "Reachablility warning percent [threshold]",
+			},
+			Value: &plugin.ReachabilityWarning,
 		},
-		&sensu.PluginConfigOption[uint]{
-			Path:      "lastrx_critical",
-			Env:       "CHRONY_LASTRX_CRITICAL",
-			Argument:  "lastrx-critical",
-			Shorthand: "C",
-			Default:   uint(128),
-			Usage:     "LastRx critical level [s]",
-			Value:     &plugin.LastRxCritical,
+		&nagios.ThresholdConfigOption{
+			Option: sensu.PluginConfigOption[string]{
+				Path:      "reachability_critical",
+				Env:       "CHRONY_REACHABILITY_CRITICAL",
+				Argument:  "reachablility-critical",
+				Shorthand: "c",
+				Default:   ":34.0",
+				Usage:     "Reachablility critical percent [threshold]",
+			},
+			Value: &plugin.ReachabilityCritical,
 		},
-		&sensu.PluginConfigOption[float64]{
-			Path:      "reachability_warning",
-			Env:       "CHRONY_REACHABILITY_WARNING",
-			Argument:  "reachablility-warning",
-			Shorthand: "w",
-			Default:   67.0,
-			Usage:     "Reachablility warning percent",
-			Value:     &plugin.ReachabilityWarning,
+		&nagios.ThresholdConfigOption{
+			Option: sensu.PluginConfigOption[string]{
+				Path:     "sources_warning",
+				Env:      "CHRONY_SOURCES_WARNING",
+				Argument: "sources-warning",
+				Default:  ":3",
+				Usage:    "Minimal good sources [threshold]",
+			},
+			Value: &plugin.SourcesWarning,
 		},
-		&sensu.PluginConfigOption[float64]{
-			Path:      "reachability_critical",
-			Env:       "CHRONY_REACHABILITY_CRITICAL",
-			Argument:  "reachablility-critical",
-			Shorthand: "c",
-			Default:   34.0,
-			Usage:     "Reachablility critical percent",
-			Value:     &plugin.ReachabilityCritical,
-		},
-		&sensu.PluginConfigOption[uint]{
-			Path:     "min_sources_warning",
-			Env:      "CHRONY_MIN_SOURCES_WARNING",
-			Argument: "min-sources-warning",
-			Default:  3,
-			Usage:    "Minimal good sources",
-			Value:    &plugin.MinSourcesWarning,
-		},
-		&sensu.PluginConfigOption[uint]{
-			Path:     "min_sources_critical",
-			Env:      "CHRONY_MIN_SOURCES_CRITICAL",
-			Argument: "min-sources-critical",
-			Default:  1,
-			Usage:    "Minimal good sources",
-			Value:    &plugin.MinSourcesCritical,
+		&nagios.ThresholdConfigOption{
+			Option: sensu.PluginConfigOption[string]{
+				Path:     "sources_critical",
+				Env:      "CHRONY_SOURCES_CRITICAL",
+				Argument: "sources-critical",
+				Default:  ":1",
+				Usage:    "Minimal good sources [threshold]",
+			},
+			Value: &plugin.SourcesCritical,
 		},
 		&sensu.PluginConfigOption[bool]{
 			Path:      "debug",
@@ -191,8 +162,25 @@ func executeCheck(event *corev2.Event) (int, error) {
 		return sensu.CheckStateUnknown, err
 	}
 
+	return doCheck(event, stats)
+}
+
+func doCheck(event *corev2.Event, stats *Stats) (int, error) {
+	result := sensu.CheckStateOK
+	setResult := func(newResult int) {
+		if newResult > result {
+			result = newResult
+		}
+	}
+
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.AppendHeader(table.Row{"FL", "Source IP", "Str", "State", "Last Rx", "Reachability"})
+
 	// Print debug data on exit
 	defer func() {
+		t.Render()
+
 		if plugin.Debug {
 			b, _ := json.MarshalIndent(stats, "", "  ")
 			fmt.Println(string(b))
@@ -200,24 +188,16 @@ func executeCheck(event *corev2.Event) (int, error) {
 	}()
 
 	if stats.Tracking.IPAddr.IsUnspecified() {
-		log.Printf("No tracking source!")
-		return sensu.CheckStateCritical, nil
+		log.Printf("CRITICAL: No tracking source!")
+		setResult(sensu.CheckStateCritical)
 	}
 
-	log.Printf("Tracking server: %08X (%v)", stats.Tracking.RefID, stats.Tracking.IPAddr)
-	if uint(stats.Tracking.Stratum) >= plugin.StratumCritical {
+	if plugin.StratumCritical.Check(float64(stats.Tracking.Stratum)) {
 		log.Printf("CRITICAL: Tracking server stratum: %d", stats.Tracking.Stratum)
-		return sensu.CheckStateCritical, nil
-	} else if uint(stats.Tracking.Stratum) >= plugin.StratumWarning {
+		setResult(sensu.CheckStateCritical)
+	} else if plugin.StratumWarning.Check(float64(stats.Tracking.Stratum)) {
 		log.Printf("WARNING: Tracking server stratum: %d", stats.Tracking.Stratum)
-		return sensu.CheckStateWarning, nil
-	}
-
-	result := sensu.CheckStateOK
-	setResult := func(newResult int) {
-		if newResult > result {
-			result = newResult
-		}
+		setResult(sensu.CheckStateWarning)
 	}
 
 	reachability := 0.0
@@ -232,9 +212,11 @@ func executeCheck(event *corev2.Event) (int, error) {
 			}
 		}
 
+		row := table.Row{"", source.IPAddr, source.Stratum, source.State, time.Duration(source.SinceSample) * time.Millisecond, fmt.Sprintf("%.1f%% (%08b)", srcReach, source.Reachability)}
+
 		// count only good sources: sync|candidate
 		if !(source.State == chrony.SourceStateSync || source.State == chrony.SourceStateCandidate) {
-			log.Printf("SKIP: %v server is %v, reachability: %.1f%% (0b%08b)", source.IPAddr, source.State, srcReach, source.Reachability)
+			t.AppendRow(row)
 			continue
 		}
 
@@ -242,40 +224,30 @@ func executeCheck(event *corev2.Event) (int, error) {
 		reachableSources++
 
 		if srcReach < 100.0 {
-			log.Printf("WARNING: %v (%v) server reachability: %.1f%% (0b%08b)", source.IPAddr, source.State, srcReach, source.Reachability)
+			// log.Printf("WARNING: %v (%v) server reachability: %.1f%% (0b%08b)", source.IPAddr, source.State, srcReach, source.Reachability)
+			row[0] = "W"
 		}
 
-		lastRx := uint(source.SinceSample)
-		traking := source.IPAddr.Equal(stats.Tracking.IPAddr)
-		if lastRx >= plugin.LastRxCritical && traking {
-			log.Printf("CRITICAL: tracking %v server LastRx: %d", source.IPAddr, lastRx)
-			setResult(sensu.CheckStateCritical)
-		} else if lastRx >= plugin.LastRxWarning && traking {
-			log.Printf("WARNING: tracking %v server LastRx: %d", source.IPAddr, lastRx)
-			setResult(sensu.CheckStateWarning)
-		} else if lastRx >= plugin.LastRxCritical || lastRx >= plugin.LastRxWarning {
-			log.Printf("WARNING: %v (%v) server LastRx: %d", source.IPAddr, source.State, lastRx)
-			setResult(sensu.CheckStateWarning)
-		}
+		t.AppendRow(row)
 	}
 
 	if reachableSources == 0 {
 		log.Printf("CRITICAL: no sources reachable!")
 		setResult(sensu.CheckStateCritical)
 		return result, nil
-	} else if reachableSources <= int(plugin.MinSourcesCritical) {
-		log.Printf("CRITICAL: good sources %d <= %d", reachableSources, plugin.MinSourcesCritical)
+	} else if plugin.SourcesCritical.Check(float64(reachableSources)) {
+		log.Printf("CRITICAL: good sources %s ~= %d", plugin.SourcesCritical.String(), reachableSources)
 		setResult(sensu.CheckStateCritical)
-	} else if reachableSources <= int(plugin.MinSourcesWarning) {
-		log.Printf("WARNING: good sources %d <= %d", reachableSources, plugin.MinSourcesWarning)
+	} else if plugin.SourcesWarning.Check(float64(reachableSources)) {
+		log.Printf("WARNING: good sources %s ~= %d", plugin.SourcesWarning.String(), reachableSources)
 		setResult(sensu.CheckStateWarning)
 	}
 
 	reachability /= float64(reachableSources)
-	if reachability <= plugin.ReachabilityCritical {
+	if plugin.ReachabilityCritical.Check(reachability) {
 		log.Printf("CRITICAL: only %.1f%% sources reachable!", reachability)
 		setResult(sensu.CheckStateCritical)
-	} else if reachability <= plugin.ReachabilityWarning {
+	} else if plugin.ReachabilityWarning.Check(reachability) {
 		log.Printf("WARNING: only %.1f%% sources reachable!", reachability)
 		setResult(sensu.CheckStateWarning)
 	}
@@ -287,12 +259,12 @@ func executeCheck(event *corev2.Event) (int, error) {
 	return result, nil
 }
 
-type stats struct {
+type Stats struct {
 	Tracking chrony.Tracking
 	Sources  []chrony.SourceData
 }
 
-func getStats(socketPath string) (*stats, error) {
+func getStats(socketPath string) (*Stats, error) {
 	addr, err := net.ResolveUnixAddr("unixgram", socketPath)
 	if err != nil {
 		return nil, fmt.Errorf("socket address error: %w", err)
