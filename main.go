@@ -54,7 +54,7 @@ var (
 				Path:     "stratum_warning",
 				Env:      "CHRONY_STRATUM_WARNING",
 				Argument: "stratum-warning",
-				Default:  "10:",
+				Default:  "@10:",
 				Usage:    "Stratum warning level [threshold]",
 			},
 			Value: &plugin.StratumWarning,
@@ -64,7 +64,7 @@ var (
 				Path:     "stratum_critical",
 				Env:      "CHRONY_STRATUM_CRITICAL",
 				Argument: "stratum-critical",
-				Default:  "12:",
+				Default:  "@12:",
 				Usage:    "Stratum critical level [threshold]",
 			},
 			Value: &plugin.StratumCritical,
@@ -75,7 +75,7 @@ var (
 				Env:       "CHRONY_REACHABILITY_WARNING",
 				Argument:  "reachablility-warning",
 				Shorthand: "w",
-				Default:   ":67.0",
+				Default:   "@~:67.0",
 				Usage:     "Reachablility warning percent [threshold]",
 			},
 			Value: &plugin.ReachabilityWarning,
@@ -86,7 +86,7 @@ var (
 				Env:       "CHRONY_REACHABILITY_CRITICAL",
 				Argument:  "reachablility-critical",
 				Shorthand: "c",
-				Default:   ":34.0",
+				Default:   "@~:34.0",
 				Usage:     "Reachablility critical percent [threshold]",
 			},
 			Value: &plugin.ReachabilityCritical,
@@ -96,7 +96,7 @@ var (
 				Path:     "sources_warning",
 				Env:      "CHRONY_SOURCES_WARNING",
 				Argument: "sources-warning",
-				Default:  ":3",
+				Default:  "3:",
 				Usage:    "Minimal good sources [threshold]",
 			},
 			Value: &plugin.SourcesWarning,
@@ -106,7 +106,7 @@ var (
 				Path:     "sources_critical",
 				Env:      "CHRONY_SOURCES_CRITICAL",
 				Argument: "sources-critical",
-				Default:  ":1",
+				Default:  "1:",
 				Usage:    "Minimal good sources [threshold]",
 			},
 			Value: &plugin.SourcesCritical,
@@ -175,7 +175,7 @@ func doCheck(event *corev2.Event, stats *Stats) (int, error) {
 
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"FL", "Source IP", "Str", "State", "Last Rx", "Reachability"})
+	t.AppendHeader(table.Row{"FL", "Source IP", "Str", "State", "Last Rx", "Reachability", "Last sample", "Error"})
 
 	// Print debug data on exit
 	defer func() {
@@ -200,6 +200,10 @@ func doCheck(event *corev2.Event, stats *Stats) (int, error) {
 		setResult(sensu.CheckStateWarning)
 	}
 
+	ftod := func(f float64) time.Duration {
+		return time.Duration(f*1e9) * time.Nanosecond
+	}
+
 	reachability := 0.0
 	reachableSources := 0
 	for _, source := range stats.Sources {
@@ -212,7 +216,17 @@ func doCheck(event *corev2.Event, stats *Stats) (int, error) {
 			}
 		}
 
-		row := table.Row{"", source.IPAddr, source.Stratum, source.State, time.Duration(source.SinceSample) * time.Millisecond, fmt.Sprintf("%.1f%% (%08b)", srcReach, source.Reachability)}
+		fl := ""
+		row := table.Row{
+			fl,
+			source.IPAddr,
+			source.Stratum,
+			source.State,
+			time.Duration(source.SinceSample) * time.Second,
+			fmt.Sprintf("%.1f%% (0b%08b)", srcReach, source.Reachability),
+			fmt.Sprintf("%s[%s]", ftod(source.LatestMeas), ftod(source.OrigLatestMeas)),
+			ftod(source.LatestMeasErr),
+		}
 
 		// count only good sources: sync|candidate
 		if !(source.State == chrony.SourceStateSync || source.State == chrony.SourceStateCandidate) {
@@ -223,11 +237,16 @@ func doCheck(event *corev2.Event, stats *Stats) (int, error) {
 		reachability += srcReach
 		reachableSources++
 
-		if srcReach < 100.0 {
-			// log.Printf("WARNING: %v (%v) server reachability: %.1f%% (0b%08b)", source.IPAddr, source.State, srcReach, source.Reachability)
-			row[0] = "W"
+		if stats.Tracking.IPAddr.Equal(source.IPAddr) {
+			fl += "*"
 		}
 
+		if srcReach < 100.0 {
+			// log.Printf("WARNING: %v (%v) server reachability: %.1f%% (0b%08b)", source.IPAddr, source.State, srcReach, source.Reachability)
+			fl += "W"
+		}
+
+		row[0] = fl
 		t.AppendRow(row)
 	}
 
@@ -297,7 +316,7 @@ func getStats(socketPath string) (*Stats, error) {
 		Connection: sock,
 	}
 
-	stats := &stats{
+	stats := &Stats{
 		Sources: make([]chrony.SourceData, 0),
 	}
 
