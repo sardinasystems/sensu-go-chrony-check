@@ -252,8 +252,8 @@ func doCheck(event *corev2.Event, stats *Stats) (int, error) {
 			ftod(source.LatestMeasErr),
 		}
 
-		// count only good sources: sync|candidate
-		if !(source.State == chrony.SourceStateSync || source.State == chrony.SourceStateCandidate) {
+		// count only good sources: sync|candidate|outlier
+		if !(source.State == chrony.SourceStateSync || source.State == chrony.SourceStateCandidate || source.State == chrony.SourceStateOutlier) {
 			t.AppendRow(row)
 			continue
 		}
