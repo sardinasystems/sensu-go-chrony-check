@@ -27,6 +27,8 @@ type Config struct {
 	ReachabilityCritical nagios.Threshold
 	SourcesWarning       nagios.Threshold
 	SourcesCritical      nagios.Threshold
+	LastrxWarning        nagios.Threshold
+	LastrxCritical       nagios.Threshold
 	Debug                bool
 }
 
@@ -110,6 +112,28 @@ var (
 				Usage:    "Minimal good sources [threshold]",
 			},
 			Value: &plugin.SourcesCritical,
+		},
+		&nagios.ThresholdConfigOption{
+			Option: sensu.PluginConfigOption[string]{
+				Path:      "lastrx_warning",
+				Env:       "CHRONY_LASTRX_WARNING",
+				Argument:  "lastrx-warning",
+				Shorthand: "W",
+				Default:   "64",
+				Usage:     "Check lastrx [s][threshold] (unused. Left only for opts compatibility)",
+			},
+			Value: &plugin.LastrxWarning,
+		},
+		&nagios.ThresholdConfigOption{
+			Option: sensu.PluginConfigOption[string]{
+				Path:      "lastrx_critical",
+				Env:       "CHRONY_LASTRX_CRITICAL",
+				Argument:  "lastrx-critical",
+				Shorthand: "C",
+				Default:   "128",
+				Usage:     "Check lastrx [s][threshold] (unused. Left only for opts compatibility)",
+			},
+			Value: &plugin.LastrxCritical,
 		},
 		&sensu.PluginConfigOption[bool]{
 			Path:      "debug",
