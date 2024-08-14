@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/netip"
 	"os"
 	"path"
 	"path/filepath"
@@ -365,6 +366,10 @@ func getStats(socketPath string) (*Stats, error) {
 		return nil, fmt.Errorf("unexpected reply: %v", resp)
 	}
 
+	// in some configurations there may be several fake sources with addresses
+	// like: 0:1:: ... 0:f:: ... 0:14::
+	invalidPrefix := netip.MustParsePrefix("0::/8")
+
 	for i := 0; i < sources.NSources; i++ {
 		srcReq := chrony.NewSourceDataPacket(int32(i))
 		resp, err = client.Communicate(srcReq)
@@ -374,6 +379,11 @@ func getStats(socketPath string) (*Stats, error) {
 		source, ok := resp.(*chrony.ReplySourceData)
 		if !ok {
 			return nil, fmt.Errorf("unexpected reply: %v", resp)
+		}
+
+		addr, ok := netip.AddrFromSlice(source.SourceData.IPAddr)
+		if !ok || (addr.Is6() && invalidPrefix.Contains(addr)) {
+			continue
 		}
 
 		stats.Sources = append(stats.Sources, source.SourceData)
