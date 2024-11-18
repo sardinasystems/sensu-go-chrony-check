@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/facebookincubator/ntp v0.0.0-20211124231859-25b006a98efc
-	github.com/jedib0t/go-pretty/v6 v6.6.1
+	github.com/jedib0t/go-pretty/v6 v6.6.2
 	github.com/sardinasystems/sensu-go-check-common v0.0.0-20240805172939-b00e645195d7
 	github.com/sensu/core/v2 v2.20.0
 	github.com/sensu/sensu-plugin-sdk v0.19.0
