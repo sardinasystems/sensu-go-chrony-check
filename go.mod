@@ -2,8 +2,6 @@ module github.com/sardinasystems/sensu-go-chrony-check
 
 go 1.22.7
 
-toolchain go1.23.1
-
 require (
 	github.com/facebookincubator/ntp v0.0.0-20211124231859-25b006a98efc
 	github.com/jedib0t/go-pretty/v6 v6.6.3
