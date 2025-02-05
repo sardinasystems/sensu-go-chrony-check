@@ -3,7 +3,7 @@ module github.com/sardinasystems/sensu-go-chrony-check
 go 1.22.7
 
 require (
-	github.com/facebookincubator/ntp v0.0.0-20211124231859-25b006a98efc
+	github.com/facebook/time v0.0.0-20250204133653-23ff261625a6
 	github.com/jedib0t/go-pretty/v6 v6.6.5
 	github.com/sardinasystems/sensu-go-check-common v0.0.0-20250205120347-ebe0a44b4bbb
 	github.com/sensu/core/v2 v2.20.0

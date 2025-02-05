@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/facebookincubator/ntp/protocol/chrony"
+	"github.com/facebook/time/ntp/chrony"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/sardinasystems/sensu-go-check-common/nagios"
 	corev2 "github.com/sensu/core/v2"
