@@ -4,7 +4,7 @@ go 1.23.6
 
 require (
 	github.com/facebook/time v0.0.0-20250211113239-e3e1421a0980
-	github.com/jedib0t/go-pretty/v6 v6.6.7
+	github.com/jedib0t/go-pretty/v6 v6.7.8
 	github.com/sardinasystems/sensu-go-check-common v0.0.0-20250217152407-6e3ef0ecdde1
 	github.com/sensu/core/v2 v2.20.0
 	github.com/sensu/sensu-plugin-sdk v0.19.0
